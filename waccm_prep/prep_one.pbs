@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -j oe
+# One scenario. Submitted by submit.sh, which sets the account, queue,
+# resources and -v NAME=...,INDIR=...,PREP_HOME=...,OVERWRITE=...
+source "$PREP_HOME/config.sh"
+activate_env
+
+OUT=$(scen_dir "$NAME")
+echo "Scenario $NAME"
+echo "  input:  $INDIR"
+echo "  output: $OUT"
+echo "  started $(date)"
+python "$PREP_HOME/prep_waccm_zm.py" --input-dir "$INDIR" --out-dir "$OUT" \
+       ${OVERWRITE:+--overwrite}
+status=$?
+echo "Finished $(date), exit status $status"
+exit $status
