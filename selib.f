@@ -317,111 +317,224 @@ c              print*,j, ext(IT1,IWT1,IR1,1,J)
  	end
 
 
-      subroutine    read_ps(file_name,p,time,lats,alts)
-      
-C     This is part of the netCDF package.
-C     Copyright 2006 University Corporation for Atmospheric Research/Unidata.
-C     See COPYRIGHT file for conditions of use.
+      subroutine read_period(period, nmons)
 
+c     Reads the simulation period from period.dat (first line,
+c     YYYYMM-YYYYMM, e.g. 203501-208412) and returns the number of
+c     months. The period also forms the suffix of every input file name
+c     (WACCM_data/<name>.<period>.nc).
+
+      implicit none
+      character*13 period
+      integer nmons, y1, m1, y2, m2, ios
+      character*80 line
+
+      open(11, file='period.dat', status='old', iostat=ios)
+      if (ios .ne. 0) then
+         print*, 'Error: cannot open period.dat. It must contain one',
+     +           ' line YYYYMM-YYYYMM, e.g. 203501-208412'
+         stop 2
+      endif
+      read(11, '(A)', iostat=ios) line
+      close(11)
+      line = adjustl(line)
+      period = line(1:13)
+
+      if (ios .eq. 0) read(period, '(I4,I2,1X,I4,I2)', iostat=ios)
+     +     y1, m1, y2, m2
+      if (ios .ne. 0 .or. period(7:7) .ne. '-' .or.
+     +    m1 .lt. 1 .or. m1 .gt. 12 .or. m2 .lt. 1 .or. m2 .gt. 12) then
+         print*, 'Error: period.dat must contain YYYYMM-YYYYMM, got: ',
+     +           trim(line)
+         stop 2
+      endif
+
+      nmons = (y2 - y1)*12 + (m2 - m1) + 1
+      if (nmons .lt. 12) then
+         print*, 'Error: period ', period, ' gives ', nmons,
+     +           ' months; at least 12 are required'
+         stop 2
+      endif
+
+      print*, 'Simulation period: ', period, ' (', nmons, ' months)'
+      print*
+
+      return
+      end
+
+
+      subroutine nc_check(retval, what)
+
+c     Stops with a netCDF error message plus context.
 
       implicit none
       include 'netcdf.inc'
-      
-
-
-C     This is the name of the data file we will read.
-
-      integer NLATS, NmONS, Nlevels,nlons
-
-      parameter (Nlevels=70, NLats=192,nlons=1, Nmons=972)
-
-      
-
-      character file_name*50, c4*4
-      character *200 text1,text2
-
-      real ps(nlats,nmons)
-      integer mon,lat, alt,iyear
-      real p(nlats,nlevels,nmons)
-
-      real*8 hyam(70)
-      real*8 hybm(70)
-      real*8 time(nmons), lats(NLATS),lons(nlons), alts(nlevels)
-      integer ncid,mons(NMONS)
-
-C     We are reading 2D data, a 12 x 36  x 70 mon lat alt grid.
-
-      integer lat_varid, mon_varid, alt_varid
-
-C     Loop indices
-
-      integer lon,i,k,j
-c      C     Error handling
       integer retval
-      
+      character*(*) what
 
-C     Open the file. 
-      print*, "Reading file: ", file_name
+      if (retval .ne. nf_noerr) then
+         print*, 'Error while ', trim(what)
+         call handle_err(retval)
+      endif
 
-
-      retval = nf_open(FILE_NAME, nf_nowrite, ncid)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-
-      retval = nf_inq_varid(ncid, 'lev', alt_varid)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-      retval = nf_get_var_double(ncid, alt_varid, alts)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-
-      retval = nf_inq_varid(ncid, 'time', alt_varid)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-      retval = nf_get_var_double(ncid, alt_varid, time)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-
-      
-c      print*, time
-
-      retval = nf_inq_varid(ncid, 'lat', alt_varid)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-      retval = nf_get_var_double(ncid, alt_varid, lats)
-      if (retval .ne. nf_noerr) call handle_err(retval)
-
-      
-
-      
-      
-c             real aps(Nlons,Nlats,Nmons)
-c        real Temp_srf(Nlons,Nlats,Nmons)
-
-      retval = nf_inq_varid(ncid, 'hyam', alt_varid)
-      retval = nf_get_var_double(ncid, alt_varid, hyam)
-      retval = nf_inq_varid(ncid, 'hybm', alt_varid)
-      retval = nf_get_var_double(ncid, alt_varid, hybm)
-
-c      print*,hyam
-c      print*,hybm
-      
-      
-      retval = nf_inq_varid(ncid, 'PS', alt_varid)
-      retval = nf_get_var_real(ncid, alt_varid, PS)
-
-
-c      print*, nlevels
-
-      
-      Do I=1, nmons
-         DO J=1,nlats
-            DO K=1,nlevels
-         p(J,K,i) = hyam(k)*1D5 + ps(j,I)* hybm(k)
-c         if (j.eq.1 .and. I.eq.100)print*,k,p(j,k,i),ps(j,i)
-         
-      enddo
-
-      enddo
-      enddo
-
-      
       return
-      
+      end
+
+
+      subroutine check_var_dims(ncid, varid, vname, fname, nd, lens)
+
+c     Stops unless variable varid has exactly nd dimensions with the
+c     given lengths. Lengths are in Fortran order, i.e. the reverse of
+c     ncdump: a (time, lev, lat) variable is checked as (lat, lev, time).
+
+      implicit none
+      include 'netcdf.inc'
+      integer ncid, varid, nd, lens(nd)
+      character*(*) vname, fname
+      integer ndv, dimids(nf_max_var_dims), dlen, i, retval
+
+      retval = nf_inq_varndims(ncid, varid, ndv)
+      call nc_check(retval, 'reading dimensions of '//trim(vname))
+      if (ndv .ne. nd) then
+         print*, 'Error: ', trim(vname), ' in ', trim(fname), ' has ',
+     +           ndv, ' dimensions; expected ', nd
+         stop 2
+      endif
+
+      retval = nf_inq_vardimid(ncid, varid, dimids)
+      call nc_check(retval, 'reading dimensions of '//trim(vname))
+      do i = 1, nd
+         retval = nf_inq_dimlen(ncid, dimids(i), dlen)
+         call nc_check(retval, 'reading dimensions of '//trim(vname))
+         if (dlen .ne. lens(i)) then
+            print*, 'Error: ', trim(vname), ' in ', trim(fname),
+     +              ': dimension ', i, ' (Fortran order) has length ',
+     +              dlen, '; expected ', lens(i)
+            print*, 'Check period.dat and the WACCM_data/ files.'
+            stop 2
+         endif
+      enddo
+
+      return
+      end
+
+
+      subroutine read_ps(file_name, nlats, nlevels, nmons,
+     +                   p, time, lats, alts, tunits, tcal)
+
+c     Reads the PS file: levels, latitudes, time (with its units and
+c     calendar), hybrid coefficients and surface pressure, and returns
+c     the full pressure field p = hyam*1e5 + hybm*PS [Pa].
+c     All dimensions are checked against nlats, nlevels and nmons.
+
+      implicit none
+      include 'netcdf.inc'
+
+      character*(*) file_name, tunits, tcal
+      integer nlats, nlevels, nmons
+      real p(nlats,nlevels,nmons)
+      real*8 time(nmons), lats(nlats), alts(nlevels)
+
+      real, allocatable :: ps(:,:)
+      real*8, allocatable :: hyam(:), hybm(:)
+      real*8 p0
+      integer ncid, varid, retval, alen, i, j, k
+
+      print*, 'Reading file: ', trim(file_name)
+      retval = nf_open(file_name, nf_nowrite, ncid)
+      call nc_check(retval, 'opening '//trim(file_name))
+
+      allocate(ps(nlats,nmons), hyam(nlevels), hybm(nlevels))
+
+c     Levels
+      retval = nf_inq_varid(ncid, 'lev', varid)
+      call nc_check(retval, 'finding lev in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'lev', file_name, 1, (/nlevels/))
+      retval = nf_get_var_double(ncid, varid, alts)
+      call nc_check(retval, 'reading lev')
+
+c     Time, with units and calendar
+      retval = nf_inq_varid(ncid, 'time', varid)
+      call nc_check(retval, 'finding time in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'time', file_name, 1, (/nmons/))
+      retval = nf_get_var_double(ncid, varid, time)
+      call nc_check(retval, 'reading time')
+
+      tunits = ' '
+      retval = nf_inq_attlen(ncid, varid, 'units', alen)
+      call nc_check(retval, 'finding the units attribute of time')
+      if (alen .gt. len(tunits)) then
+         print*, 'Error: time units attribute longer than ', len(tunits)
+         stop 2
+      endif
+      retval = nf_get_att_text(ncid, varid, 'units', tunits(1:alen))
+      call nc_check(retval, 'reading the units attribute of time')
+
+      tcal = ' '
+      retval = nf_inq_attlen(ncid, varid, 'calendar', alen)
+      if (retval .eq. nf_noerr .and. alen .le. len(tcal)) then
+         retval = nf_get_att_text(ncid, varid, 'calendar', tcal(1:alen))
+         call nc_check(retval, 'reading the calendar attribute of time')
+      else
+         print*, 'Warning: no calendar attribute on time in ',
+     +           trim(file_name), '; none will be written'
+      endif
+
+c     Latitudes
+      retval = nf_inq_varid(ncid, 'lat', varid)
+      call nc_check(retval, 'finding lat in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'lat', file_name, 1, (/nlats/))
+      retval = nf_get_var_double(ncid, varid, lats)
+      call nc_check(retval, 'reading lat')
+
+c     Hybrid coefficients
+      retval = nf_inq_varid(ncid, 'hyam', varid)
+      call nc_check(retval, 'finding hyam in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'hyam', file_name, 1,
+     +                    (/nlevels/))
+      retval = nf_get_var_double(ncid, varid, hyam)
+      call nc_check(retval, 'reading hyam')
+
+      retval = nf_inq_varid(ncid, 'hybm', varid)
+      call nc_check(retval, 'finding hybm in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'hybm', file_name, 1,
+     +                    (/nlevels/))
+      retval = nf_get_var_double(ncid, varid, hybm)
+      call nc_check(retval, 'reading hybm')
+
+c     The pressure formula below assumes P0 = 1e5 Pa; check it if present
+      retval = nf_inq_varid(ncid, 'P0', varid)
+      if (retval .eq. nf_noerr) then
+         retval = nf_get_var_double(ncid, varid, p0)
+         call nc_check(retval, 'reading P0')
+         if (abs(p0 - 1d5) .gt. 1d-3) then
+            print*, 'Error: P0 = ', p0, ' Pa; the code assumes 1e5 Pa'
+            stop 2
+         endif
+      endif
+
+c     Surface pressure
+      retval = nf_inq_varid(ncid, 'PS', varid)
+      call nc_check(retval, 'finding PS in '//trim(file_name))
+      call check_var_dims(ncid, varid, 'PS', file_name, 2,
+     +                    (/nlats, nmons/))
+      retval = nf_get_var_real(ncid, varid, ps)
+      call nc_check(retval, 'reading PS')
+
+      retval = nf_close(ncid)
+      call nc_check(retval, 'closing '//trim(file_name))
+
+      do i = 1, nmons
+         do j = 1, nlats
+            do k = 1, nlevels
+               p(j,k,i) = hyam(k)*1D5 + ps(j,i)*hybm(k)
+            enddo
+         enddo
+      enddo
+
+      deallocate(ps, hyam, hybm)
+
+      return
       end
 
       subroutine handle_err(errcode)
@@ -435,77 +548,40 @@ c         if (j.eq.1 .and. I.eq.100)print*,k,p(j,k,i),ps(j,i)
 C     trace gas
 
 
-      subroutine    read_var(file_name,varname,var)
-      
-C     This is part of the netCDF package.
-C     Copyright 2006 University Corporation for Atmospheric Research/Unidata.
-C     See COPYRIGHT file for conditions of use.
+      subroutine read_var(file_name, varname, nlats, nlevels, nmons,
+     +                    var)
 
+c     Reads one zonal-mean field, which must have dimensions
+c     (time, lev, lat) = (nmons, nlevels, nlats) in ncdump order.
 
       implicit none
       include 'netcdf.inc'
-      
 
-
-C     This is the name of the data file we will read.
-
-      integer NLATS, NmONS, Nlevels,nlons
-
-      parameter (Nlevels=192, NLats=70,nlons=1, Nmons=972)
-      
-
-      character file_name*50, c4*4,varname*20
-      
-      character *200 text1,text2
-
-      real ps(nlats,nmons)
-      integer mon,lat, alt,iyear
-      real p(nlats,nlevels,nmons)
+      character*(*) file_name, varname
+      integer nlats, nlevels, nmons
       real var(nlats,nlevels,nmons)
+      integer ncid, varid, retval
 
-      real*8 hyam(Nlevels)
-      real*8 hybm(Nlevels)
-      real*8 time(nmons)
-      integer ncid,mons(NMONS)
+      print*, 'Reading file: ', trim(file_name)
+      retval = nf_open(file_name, nf_nowrite, ncid)
+      call nc_check(retval, 'opening '//trim(file_name))
 
-C     We are reading 2D data, a 12 x 36  x 70 mon lat alt grid.
-
-      integer lat_varid, mon_varid, alt_varid
-
-C     Loop indices
-
-      integer lon,i,k,j
-c      C     Error handling
-      integer retval
-
-       real*8 lats(NLATS),lons(nlons)
-C     Open the file. 
-      PRINT*, "Reading file: ", file_name
-
-
-      retval = nf_open(FILE_NAME, nf_nowrite, ncid)
-c      print*, ncid, retval,nf_noerr
-
-
-
-      i=len(trim(varname))
-c      print*,I
-      
-      retval = nf_inq_varid(ncid, varname(1:I), alt_varid)
-      print*, 'Variable name: ' , varname(1:I)
+      retval = nf_inq_varid(ncid, trim(varname), varid)
+      call nc_check(retval, 'finding '//trim(varname)//' in '//
+     +              trim(file_name))
+      print*, 'Variable name: ', trim(varname)
       print*
 
-      retval = nf_get_var_real(ncid, alt_varid, var)
-c      print*, 'retval  ' , retval
-      
-      
-      if (retval .ne. nf_noerr) call handle_err(retval)
+      call check_var_dims(ncid, varid, varname, file_name, 3,
+     +                    (/nlats, nlevels, nmons/))
 
-         
+      retval = nf_get_var_real(ncid, varid, var)
+      call nc_check(retval, 'reading '//trim(varname))
 
-     
+      retval = nf_close(ncid)
+      call nc_check(retval, 'closing '//trim(file_name))
+
       return
-      
       end
 
 

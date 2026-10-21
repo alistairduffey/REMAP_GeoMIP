@@ -1,0 +1,65 @@
+#!/bin/bash
+#PBS -N remap_mie
+#PBS -A wyom0228
+#PBS -q develop
+#PBS -l select=1:ncpus=1:mem=16GB
+#PBS -l walltime=03:00:00
+#PBS -j oe
+#
+# Full REMAP Mie run: lookup table, then the p / earth / sun writers.
+# Run from the REMAP directory (bands.dat, period.dat, data_base/,
+# WACCM_data/ and the .f sources), after prep_waccm_zm.py has written
+# WACCM_data/*.<period>.nc and period.dat.
+#
+# Submit with:  qsub run_remap.pbs
+# To skip rebuilding the lookup table (same bands.dat as last run):
+#               qsub -v SKIP_TABLE=1 run_remap.pbs
+
+cd "$PBS_O_WORKDIR"
+set -e
+
+# ---- pre-flight checks ------------------------------------------------------
+if [ ! -f period.dat ]; then
+    echo "period.dat not found - run prep_waccm_zm.py first"; exit 1
+fi
+PERIOD=$(head -1 period.dat | tr -d '[:space:]')
+echo "Period: $PERIOD"
+
+for f in bands.dat data_base; do
+    [ -e "$f" ] || { echo "$f not found in $PWD"; exit 1; }
+done
+
+# Re-validate the inputs if the prep script is here (cheap; catches files
+# changed since they were written)
+if [ -f prep_waccm_zm.py ]; then
+    module load conda
+    conda activate npl
+    python prep_waccm_zm.py --validate-only --run-dir .
+    conda deactivate
+fi
+
+# ---- build and run ----------------------------------------------------------
+module purge
+module load ncarenv nvhpc netcdf
+ulimit -s unlimited
+
+FFLAGS=$(nf-config --fflags)
+FLIBS="$(nf-config --flibs) $(nc-config --libs)"
+LIBDIRS=$(echo $FLIBS | tr " " "\n" | sed -n "s/^-L//p" | sort -u | paste -sd: -)
+export LD_LIBRARY_PATH="$LIBDIRS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+PROGS="write_WACCM_p write_WACCM_earth write_WACCM_sun"
+if [ -z "$SKIP_TABLE" ]; then
+    PROGS="bands_ECHAM6 $PROGS"
+elif [ ! -f lookup_table.dat ]; then
+    echo "SKIP_TABLE set but lookup_table.dat is missing"; exit 1
+fi
+
+for prog in $PROGS; do
+    echo "=== Compiling and running $prog ==="
+    rm -f "$prog" ./*.o
+    nvfortran $FFLAGS -o "$prog" "$prog.f" selib.f $FLIBS
+    ./"$prog"
+done
+
+echo "The full Mie calculation is completed for $PERIOD; output files are ready!"
