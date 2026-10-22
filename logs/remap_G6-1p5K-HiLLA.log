@@ -80,3 +80,11 @@ NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch
   0 inform,   2 warnings,   0 severes, 0 fatal for bhmie
 built write_WACCM_earth
 50 chunks in /glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_G6-1p5K-HiLLA_203501-208412
+launched 150 processes at Thu Oct 22 09:53:39 AM MDT 2026
+all processes finished in 6 min
+WARNING: overwriting environment variables set in the machine
+overwriting variable ['UCX_TLS']
+p: 50 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-HiLLA/ccmi_WACCM_to_ECHAM6_p.nc (600 months)
+sun: 50 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-HiLLA/ccmi_WACCM_to_ECHAM6_sun.nc (600 months)
+earth: 50 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-HiLLA/ccmi_WACCM_to_ECHAM6_earth.nc (600 months)
+Done: merged outputs for 203501-208412 in /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-HiLLA

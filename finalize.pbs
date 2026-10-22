@@ -2,8 +2,14 @@
 #PBS -j oe
 # Submitted by submit_all_remap.sh with -v NAMES=name1:name2:... after the
 # REMAP jobs (afterany), so it renames whichever scenarios succeeded.
+# Without NAMES it finalizes every scenario in out/.
 cd "$PBS_O_WORKDIR"
 module load conda
 eval "$(conda shell.bash hook)"
 conda activate npl
-python finalize_outputs.py ${NAMES//:/ }
+if [ -n "$NAMES" ]; then
+    python finalize_outputs.py ${NAMES//:/ }
+else
+    python finalize_outputs.py --all
+fi
+

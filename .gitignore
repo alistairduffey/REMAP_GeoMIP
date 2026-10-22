@@ -6,3 +6,4 @@ composition_test/
 composition_test_run/
 *.nc
 out/
+final/

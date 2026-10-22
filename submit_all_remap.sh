@@ -51,8 +51,9 @@ done < <(list_scenarios "$@")
 [ ${#ids[@]} -gt 0 ] || { echo "nothing submitted"; exit 0; }
 
 dep=$(IFS=:; echo "${ids[*]}")
-fid=$(qsub -A "$ACCOUNT" -q "$QUEUE" -l walltime=00:30:00 -l select=1:ncpus=1:mem=4GB \
+fid=$(qsub -A "$ACCOUNT" -q "$QUEUE" -l walltime=03:00:00 -l select=1:ncpus=1:mem=8GB \
            -N remap_finalize -o "$RUN/logs/finalize.log" -W depend=afterany:"$dep" \
            -v NAMES="$(IFS=:; echo "${names[*]}")" "$RUN/finalize.pbs")
 echo "final $fid  (runs after all ${#ids[@]} jobs; renames whatever succeeded)"
 echo "logs: $RUN/logs/"
+

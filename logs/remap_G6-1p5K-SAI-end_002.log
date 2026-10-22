@@ -50,3 +50,7 @@ launched 48 processes at Thu Oct 22 09:48:23 AM MDT 2026
 all processes finished in 2 min
 WARNING: overwriting environment variables set in the machine
 overwriting variable ['UCX_TLS']
+p: 16 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-SAI-end_002/ccmi_WACCM_to_ECHAM6_p.nc (192 months)
+sun: 16 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-SAI-end_002/ccmi_WACCM_to_ECHAM6_sun.nc (192 months)
+earth: 16 chunks -> /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-SAI-end_002/ccmi_WACCM_to_ECHAM6_earth.nc (192 months)
+Done: merged outputs for 208501-210012 in /glade/derecho/scratch/duffey/REMAP_NorESM/out/G6-1p5K-SAI-end_002
