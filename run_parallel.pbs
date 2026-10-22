@@ -1,0 +1,135 @@
+#!/bin/bash
+#PBS -N remap_par
+#PBS -A wyom0228
+#PBS -q main
+#PBS -l select=1:ncpus=128:mem=235GB
+#PBS -l walltime=4:00:00
+#PBS -j oe
+#
+# Run the REMAP writers on a whole node by splitting the period into time
+# chunks (12 months by default), running every chunk/program pair as its
+# own process, and concatenating the outputs. The Fortran is unchanged;
+# months are independent, so the merged output is identical to a serial
+# run (checked bit-for-bit on a 24-month test).
+#
+# Run from the REMAP directory (bands.dat, lookup_table.dat, data_base/,
+# *.f, chunk_tool.py). lookup_table.dat must already exist.
+#
+#   qsub run_parallel.pbs
+#   qsub -v SRC=scenarios/WACCM_data_G6-1p5K-HiLLA,OUT=out/HiLLA run_parallel.pbs
+#
+# Options (all via -v):
+#   SRC     directory with the *.<period>.nc inputs   (default WACCM_data)
+#   PERIOD  period file                (default $SRC/period.dat, else ./period.dat)
+#   OUT     where the merged outputs go               (default .)
+#   PROGS   programs to run
+#           (default "write_WACCM_p write_WACCM_sun write_WACCM_earth")
+#   MONTHS  months per chunk, >= 12                    (default 12)
+#   NPROC   max processes at once                     (default 128)
+#   OPT     compiler optimisation, e.g. -O2           (default none)
+#
+# If the job hits the walltime, resubmit the same command: chunks that
+# already finished are skipped.
+
+cd "$PBS_O_WORKDIR"
+RUN=$PWD
+set -e
+
+SRC=${SRC:-WACCM_data}
+if [ -z "$PERIOD" ]; then
+    PERIOD=$SRC/period.dat; [ -f "$PERIOD" ] || PERIOD=period.dat
+fi
+OUT=${OUT:-.}
+PROGS=${PROGS:-"write_WACCM_p write_WACCM_sun write_WACCM_earth"}
+MONTHS=${MONTHS:-12}
+NPROC=${NPROC:-128}
+
+[ -f "$PERIOD" ] || { echo "period file $PERIOD not found"; exit 1; }
+P=$(head -1 "$PERIOD" | tr -d '[:space:]')
+[ -d "$SRC" ] || { echo "input directory $SRC not found"; exit 1; }
+SRC_REAL=$(realpath "$SRC")
+# one work dir per input directory + period, so scenarios never share chunks
+WORK=$RUN/chunks/$(basename "$SRC_REAL")_$P
+echo "Inputs $SRC, period $P, chunks of $MONTHS months, up to $NPROC processes"
+echo "Programs: $PROGS   optimisation: ${OPT:-none}   work dir: $WORK"
+for f in bands.dat lookup_table.dat data_base chunk_tool.py; do
+    [ -e "$f" ] || { echo "$f not found in $RUN"; exit 1; }
+done
+
+# ---- split (once; reused on resubmission) ------------------------------------
+module load conda
+eval "$(conda shell.bash hook)"
+conda activate npl
+if [ ! -d "$WORK" ]; then
+    python chunk_tool.py split --src "$SRC" --period-file "$PERIOD" \
+           --work "$WORK" --months "$MONTHS"
+    echo "$SRC_REAL" > "$WORK/SOURCE"
+elif [ "$(cat "$WORK/SOURCE" 2>/dev/null)" != "$SRC_REAL" ]; then
+    echo "$WORK exists but was split from $(cat "$WORK/SOURCE" 2>/dev/null)"
+    echo "not $SRC_REAL. Remove it or use a different SRC."; exit 1
+else
+    echo "Reusing existing $WORK (split from $SRC_REAL)"
+fi
+conda deactivate
+
+# ---- build once ---------------------------------------------------------------
+module purge
+module load ncarenv nvhpc netcdf
+ulimit -s unlimited
+FFLAGS=$(nf-config --fflags)
+FLIBS="$(nf-config --flibs) $(nc-config --libs)"
+LIBDIRS=$(echo $FLIBS | tr " " "\n" | sed -n "s/^-L//p" | sort -u | paste -sd: -)
+export LD_LIBRARY_PATH="$LIBDIRS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+BIN=$WORK/bin_$PBS_JOBID
+mkdir -p "$BIN"
+for prog in $PROGS; do
+    BUILD=$(mktemp -d)
+    (cd "$BUILD" && nvfortran $OPT $FFLAGS -o "$BIN/$prog" \
+         "$RUN/$prog.f" "$RUN/selib.f" $FLIBS)
+    rm -rf "$BUILD"
+    echo "built $prog"
+done
+
+# ---- run all chunk x program pairs, at most NPROC at a time ---------------------
+set +e
+start=$(date +%s)
+n=0
+for chunk in "$WORK"/chunk_*/; do
+    for prog in $PROGS; do
+        log=$chunk/$prog.log
+        if grep -qs "SUCCESS" "$log"; then continue; fi   # done earlier
+        while [ "$(jobs -rp | wc -l)" -ge "$NPROC" ]; do wait -n; done
+        (cd "$chunk" && "$BIN/$prog" > "$log" 2>&1) &
+        n=$((n + 1))
+    done
+done
+echo "launched $n processes at $(date)"
+wait
+echo "all processes finished in $(( ($(date +%s) - start) / 60 )) min"
+
+# ---- check -----------------------------------------------------------------------
+fail=0
+for chunk in "$WORK"/chunk_*/; do
+    for prog in $PROGS; do
+        if ! grep -qs "SUCCESS" "$chunk/$prog.log"; then
+            echo "FAILED: $chunk$prog  (see $chunk$prog.log)"
+            fail=$((fail + 1))
+        fi
+    done
+done
+if [ "$fail" -gt 0 ]; then
+    echo "$fail chunk run(s) failed; outputs not merged. Fix and resubmit."
+    exit 1
+fi
+
+# ---- merge -----------------------------------------------------------------------
+KINDS=$(for prog in $PROGS; do echo "${prog#write_WACCM_}"; done | tr '\n' ' ')
+module load conda
+eval "$(conda shell.bash hook)"
+conda activate npl
+python chunk_tool.py merge --work "$WORK" --out "$OUT" --kinds $KINDS
+status=$?
+rm -rf "$BIN"
+[ $status -eq 0 ] && echo "Done: merged outputs for $P in $OUT"
+exit $status

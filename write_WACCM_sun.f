@@ -733,7 +733,7 @@ c           Calculate H2O weight percentage
             ph2o = rhh/100* vwater(tt) ! vwater is a function btw
             call calwtwaccm(Tt, wts, ph2o)
             vol = 8.314*tt/pp* 1000/28.97 !m3/kg
-            wtt=wts
+            wtt=wts/100d0 ! H2SO4 wt% -> fraction (table axis)
              
 c           Print some values to check for numerical inconsistencies
             if (j.eq.check_lat .and. k.eq.check_level) 
