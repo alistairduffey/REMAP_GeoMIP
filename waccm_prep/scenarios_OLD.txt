@@ -1,0 +1,15 @@
+# name                 input directory (CESM month_1 time series)
+# Lines starting with # are ignored. Paths marked "inferred" were built
+# from the SINGLE-PT-INJ base directory and the case name - check them.
+G6-1p5K-SAI            /glade/campaign/collections/gdex/data/d651059/ARISE-SAI-1.5/b.e21.BW.f09_g17.SSP245-G6-1p5K-SAI.001/atm/proc/tseries/month_1
+G6-1p5K-HiLLA          /glade/campaign/cgd/amp/walkerl/GeoMIP/HiLLA/b.e21.BW.f09_g17.SSP245-G6-1p5K-HiLLA.001/atm/proc/tseries/month_1
+G6-1p5K-SAI-end_002    /glade/derecho/scratch/czarakas/archive/G6-1p5K-termination_002/atm/proc/tseries/month_1
+INJSON60S              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJSON60S_12Tg.001/atm/proc/tseries/month_1
+INJANN45S              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN45S_12Tg.001/atm/proc/tseries/month_1   # inferred
+INJANN30S              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN30S_12Tg.001/atm/proc/tseries/month_1   # inferred
+INJANN15S              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN15S_12Tg.001/atm/proc/tseries/month_1   # inferred
+INJANN0N               /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN0N_12Tg.001/atm/proc/tseries/month_1
+INJANN15N              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN15N_12Tg.001/atm/proc/tseries/month_1   # inferred
+INJANN30N              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN30N_12Tg.001/atm/proc/tseries/month_1   # inferred
+INJANN45N              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJANN45N_12Tg.001/atm/proc/tseries/month_1
+INJMAM60N              /glade/campaign/cesm/development/wawg/WACCM6-MA-1deg/SINGLE-PT-INJ/b.e21.BWSSP245.f09_g17.release-cesm2.1.3.WACCM-MA-1deg.INJMAM60N_12Tg.001/atm/proc/tseries/month_1   # inferred

@@ -4,3 +4,5 @@ WACCM_data_GLENS/
 scenarios/
 composition_test/
 composition_test_run/
+*.nc
+out/

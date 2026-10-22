@@ -1,0 +1,67 @@
+Inputs /glade/derecho/scratch/duffey/REMAP_NorESM/scenarios/WACCM_data_INJANN30S, period 203501-206912, chunks of 12 months, up to 8 processes
+Programs: write_WACCM_p write_WACCM_sun write_WACCM_earth   optimisation: -O2   work dir: /glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_203501-203512: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_203601-203612: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_203701-203712: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_203801-203812: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_203901-203912: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204001-204012: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204101-204112: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204201-204212: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204301-204312: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204401-204412: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204501-204512: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204601-204612: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204701-204712: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204801-204812: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_204901-204912: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205001-205012: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205101-205112: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205201-205212: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205301-205312: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205401-205412: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205501-205512: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205601-205612: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205701-205712: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205801-205812: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_205901-205912: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206001-206012: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206101-206112: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206201-206212: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206301-206312: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206401-206412: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206501-206512: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206601-206612: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206701-206712: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206801-206812: 12 months
+/glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912/chunk_206901-206912: 12 months
+35 chunks for 203501-206912 (420 months)
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) ncarenv/25.10
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_p.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_p.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+  0 inform,   2 warnings,   0 severes, 0 fatal for bhmie
+built write_WACCM_p
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_sun.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_sun.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+  0 inform,   2 warnings,   0 severes, 0 fatal for bhmie
+built write_WACCM_sun
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_earth.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/write_WACCM_earth.f:
+/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f:
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+NVFORTRAN-W-0093-Type conversion of expression performed (/glade/derecho/scratch/duffey/REMAP_NorESM/selib.f: 3376)
+  0 inform,   2 warnings,   0 severes, 0 fatal for bhmie
+built write_WACCM_earth
+35 chunks in /glade/derecho/scratch/duffey/REMAP_NorESM/chunks/WACCM_data_INJANN30S_203501-206912

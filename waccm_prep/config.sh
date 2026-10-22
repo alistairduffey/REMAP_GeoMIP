@@ -5,8 +5,8 @@ OUT_ROOT=/glade/derecho/scratch/duffey/REMAP_NorESM/scenarios
 
 # PBS
 ACCOUNT=wyom0228
-QUEUE=main
-WALLTIME=02:00:00
+QUEUE=develop
+WALLTIME=04:00:00
 RESOURCES=select=1:ncpus=4:mem=32GB
 
 # Python environment with xarray, dask, netCDF4

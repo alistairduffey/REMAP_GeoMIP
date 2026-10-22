@@ -1,0 +1,61 @@
+Period: 203501-208412
+
+=========== VALIDATION ===========
+Period 203501-208412: 600 months
+
+h0zm.PS.203501-208412.nc
+  ok    PS: range [6.55e+04, 1.04e+05]
+  ok    hybrid coefficients consistent with lev
+  info  time: 600 steps, 31 .. 18250 'days since 2035-01-01 00:00:00' (noleap) = 2035-02-01 00:00:00 .. 2085-01-01 00:00:00. These values, units and calendar are copied to the output unchanged.
+
+h0zm.num_a1.203501-208412.nc
+  ok    num_a1: range [2.26e-20, 1.04e+09]
+
+h0zm.num_a2.203501-208412.nc
+  ok    num_a2: range [1.13e-20, 3.62e+10]
+
+h0zm.num_a3.203501-208412.nc
+  ok    num_a3: range [1e-05, 1.9e+08]
+
+h0zm.dgnumwet1.203501-208412.nc
+  ok    dgnumwet1: range [5.35e-08, 5.14e-07]
+
+h0zm.dgnumwet2.203501-208412.nc
+  ok    dgnumwet2: range [8.7e-09, 7.87e-08]
+
+h0zm.dgnumwet3.203501-208412.nc
+  ok    dgnumwet3: range [4e-07, 8.03e-06]
+
+T.203501-208412.nc
+  warn  T: range [121, 839] outside plausible [100, 400]
+
+RELHUM.203501-208412.nc
+  warn  RELHUM: range [1.2e-06, 9.41e+04] outside plausible [0, 200]
+
+so4_a1.203501-208412.nc
+  ok    so4_a1: range [0, 2.28e-08]
+
+so4_a2.203501-208412.nc
+  ok    so4_a2: range [0, 5.24e-10]
+
+so4_a3.203501-208412.nc
+  ok    so4_a3: range [0, 1.8e-07]
+
+SAD_AERO.203501-208412.nc
+  ok    SAD_AERO: range [1.38e-30, 1.53e-06]
+
+=========== SUMMARY ===========
+0 failure(s), 2 warning(s)
+All requirements met for period 203501-208412.
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) ncarenv/25.10
+=== Compiling and running bands_ECHAM6 ===
+bands_ECHAM6.f:
+selib.f:
+NVFORTRAN-W-0093-Type conversion of expression performed (selib.f: 3376)
+NVFORTRAN-W-0093-Type conversion of expression performed (selib.f: 3376)
+  0 inform,   2 warnings,   0 severes, 0 fatal for bhmie
+/usr/bin/ld: cannot find -lnetcdf: No such file or directory
+/usr/bin/ld: cannot find -lnetcdf: No such file or directory

@@ -88,8 +88,9 @@ def next_month(yyyymm):
 def find_inputs(indir, var):
     """Files <anything>.cam.h0.<var>.YYYYMM-YYYYMM.nc, matching var exactly.
 
-    Returns (files, period) with files sorted in time. Raises if the files
-    are not contiguous."""
+    Returns (files, period) with files sorted in time. File names may
+    overlap (e.g. ...-206412.nc then 206412-...nc); zonal_mean() then
+    resolves the overlap from the time coordinate. Gaps raise ValueError."""
     pat = re.compile(rf"\.cam\.h0\.{re.escape(var)}\.(\d{{6}})-(\d{{6}})\.nc$")
     hits = []
     for f in glob.glob(os.path.join(indir, "*.nc")):
@@ -100,11 +101,28 @@ def find_inputs(indir, var):
         return [], None
     hits.sort()
     for (s1, e1, f1), (s2, e2, f2) in zip(hits, hits[1:]):
-        if s2 != next_month(e1):
-            raise ValueError(f"{var}: files not contiguous: "
+        if s2 > next_month(e1):
+            raise ValueError(f"{var}: gap between files: "
                              f"{os.path.basename(f1)} ends {e1}, "
                              f"{os.path.basename(f2)} starts {s2}")
+        if e2 <= e1:
+            raise ValueError(f"{var}: {os.path.basename(f2)} lies inside "
+                             f"{os.path.basename(f1)}")
     return [h[2] for h in hits], f"{hits[0][0]}-{hits[-1][1]}"
+
+
+def name_overlaps(files):
+    """Number of months by which consecutive file names overlap."""
+    out = []
+    pat = re.compile(r"\.(\d{6})-(\d{6})\.nc$")
+    se = [pat.search(f).groups() for f in files]
+    for (s1, e1), (s2, e2) in zip(se, se[1:]):
+        if s2 <= e1:
+            n, m = 0, s2
+            while m <= e1:
+                n, m = n + 1, next_month(m)
+            out.append((os.path.basename(files[se.index((s2, e2))]), n))
+    return out
 
 
 def zonal_mean(files, var):
@@ -114,10 +132,40 @@ def zonal_mean(files, var):
         return ds[[v for v in keep if v in ds.variables]]
 
     # decode_times=False: copy CESM's raw time values/units through untouched
-    ds = xr.open_mfdataset(files, combine="by_coords", preprocess=pre,
-                           decode_times=False, chunks={"time": 12},
-                           data_vars="minimal", coords="minimal",
-                           compat="override")
+    parts = [pre(xr.open_dataset(f, decode_times=False, chunks={"time": 12}))
+             for f in sorted(files)]
+    units = {p["time"].attrs.get("units") for p in parts}
+    if len(units) != 1:
+        raise ValueError(f"{var}: files use different time units {units}")
+
+    # Overlapping files: a time step present in an earlier file is dropped
+    # from the later one, but only if its data are identical. Anything else
+    # (same stamp, different data) is an error, not a guess.
+    kept, seen = [], np.array([])
+    for f, p in zip(sorted(files), parts):
+        t = p["time"].values
+        dup = np.isin(t, seen)
+        if dup.any():
+            for tv in t[dup]:
+                prev = next(q for q in kept if tv in q["time"].values)
+                a = prev[var].sel(time=tv).values
+                b = p[var].sel(time=tv).values
+                if not np.array_equal(a, b, equal_nan=True):
+                    raise ValueError(
+                        f"{var}: time {tv:g} appears in two files with "
+                        f"different data ({os.path.basename(f)}); not "
+                        "choosing between them")
+            print(f"  {var}: {int(dup.sum())} duplicated time step(s) in "
+                  f"{os.path.basename(f)} are identical to the earlier file; "
+                  "dropped")
+            p = p.isel(time=np.flatnonzero(~dup))
+        kept.append(p)
+        seen = np.concatenate([seen, p["time"].values])
+    ds = xr.concat(kept, dim="time", data_vars="minimal", coords="minimal",
+                   compat="override", combine_attrs="override")
+    if np.any(np.diff(ds["time"].values) <= 0):
+        raise ValueError(f"{var}: time not strictly increasing after "
+                         "combining files")
     da = ds[var]
     if "lon" in da.dims:
         da = da.mean("lon", keep_attrs=True)
@@ -270,6 +318,16 @@ def validate(outdir, period, rep):
                     tv = t[:]
                     if np.any(np.diff(tv) <= 0):
                         rep.F("time not strictly increasing")
+                    tu0 = str(getattr(t, "units", ""))
+                    if tu0.startswith("days") and len(tv) > 1:
+                        dt = np.diff(tv)
+                        if dt.min() < 27 or dt.max() > 32:
+                            rep.F(f"time steps of {dt.min():g}-{dt.max():g} "
+                                  "days; expected monthly (28-31). Missing or "
+                                  "duplicated months?")
+                        else:
+                            rep.ok(f"monthly time steps ({dt.min():g}-"
+                                   f"{dt.max():g} days)")
                     tu = getattr(t, "units", None)
                     tc = getattr(t, "calendar", None)
                     if not tu:
@@ -319,7 +377,10 @@ def main():
         # find inputs and establish one common period
         inputs, periods = {}, {}
         for var, (stem, units, required, _) in VARS.items():
-            files, per = find_inputs(args.input_dir, var)
+            try:
+                files, per = find_inputs(args.input_dir, var)
+            except ValueError as e:
+                sys.exit(f"Error: {e}")
             if not files:
                 print(f"{'MISSING' if required else 'skip'}: no input "
                       f"files for {var}")
@@ -339,7 +400,11 @@ def main():
         if args.dry_run:
             missing = [v for v in VARS if VARS[v][2] and v not in inputs]
             for v, files in inputs.items():
-                print(f"  {v:10s} {len(files)} file(s), {periods[v]}")
+                ov = name_overlaps(files)
+                note = ("" if not ov else "; name overlap: " + ", ".join(
+                    f"{n} month(s) at {fn}" for fn, n in ov) +
+                    " (resolved from time stamps during prep)")
+                print(f"  {v:10s} {len(files)} file(s), {periods[v]}{note}")
             if missing:
                 print(f"\nDRY RUN: required variables missing: {missing}")
                 sys.exit(1)
@@ -365,7 +430,10 @@ def main():
                 print(f"exists, skipping (use --overwrite): {dest}")
                 continue
             print(f"{var}: {len(files)} file(s) -> {dest}")
-            write(zonal_mean(files, var), dest)
+            try:
+                write(zonal_mean(files, var), dest)
+            except ValueError as e:
+                sys.exit(f"Error: {e}")
 
         with open(period_file, "w") as f:
             f.write(period + "\n")
