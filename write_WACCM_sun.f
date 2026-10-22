@@ -23,10 +23,8 @@ C     ##################################################################
      
      
 C     netCDF file attributes
-      character*(*) title
-      parameter (title=
-     +'WACCM Surface area density of stratopheric aerosol, monthly mean 
-     + value 202001 - 210012')
+      character*200 title
+      ! set at runtime from period.dat (see read_period)
 
       character*(*) titlea
       parameter (titlea=
@@ -89,8 +87,8 @@ C     netCDF file attributes
       character*(*) lat_units
       parameter (LAT_units = 'degrees_north')
       
-      character*(*) mon_units
-      parameter (mon_units = 'days  since  2020-01-01 00:00')
+      character*100 tunits, tcal
+      ! time units and calendar, copied from the input PS file
       
       character*(*) ns_name
       parameter (ns_name='solar_bands')
@@ -177,8 +175,10 @@ C     netCDF file attributes
 c     Variable declarations
       integer ndims,nmons,nlats,nlevels,check_level,check_lat
       parameter (ndims = 4)
-      parameter (nlats = 192, nlevels=70, nmons = 972)
-      parameter nf90_global = 0
+      parameter (nlats = 192, nlevels=70)
+      integer nf90_global
+      parameter (nf90_global = 0)
+      character*13 period ! YYYYMM-YYYYMM, from period.dat
       parameter (check_level = 24, check_lat = 100) ! determines which lev and lat are output for each month as a quick check
       
       character  file_name*70
@@ -200,20 +200,6 @@ c     Variable declarations
       integer os4_varid , oe4_varid
       integer exts4_varid , exte4_varid
 
-      real ps(nlats,nmons)
-      real p(nlats,nlevels,nmons)
-      real var(nlats,nlevels,nmons)
-      real n1(nlats,nlevels,nmons)
-      real n2(nlats,nlevels,nmons)
-      real n3(nlats,nlevels,nmons)
-      real so41(nlats,nlevels,nmons)
-      real so42(nlats,nlevels,nmons)
-      real so43(nlats,nlevels,nmons)
-      real t(nlats,nlevels,nmons)
-      real rh(nlats,nlevels,nmons)
-      real dgnumwet1(nlats,nlevels,nmons)
-      real dgnumwet2(nlats,nlevels,nmons)
-      real dgnumwet3(nlats,nlevels,nmons)
       
       real*8 wtt,wts,tt,pp,rhh,ph2o
       real*8 xn,rmode,sigma,vol
@@ -221,9 +207,14 @@ c     Variable declarations
       real*8 escat
       real*8 vwater ! from function call
       real*8 fs,bs
-      real*8 time(nmons)
-      real*8 alts(nlevels), lats(nlats), mons(nmons)
+      real*8 alts(nlevels), lats(nlats)
+      real*8,allocatable, dimension (:) :: time
 
+      real,allocatable, dimension (:,:) :: ps
+      real,allocatable, dimension (:,:,:) :: p, var, n1, n2
+      real,allocatable, dimension (:,:,:) :: n3, so41, so42, so43
+      real,allocatable, dimension (:,:,:) :: t, rh, dgnumwet1, dgnumwet2
+      real,allocatable, dimension (:,:,:) :: dgnumwet3
       real*8,allocatable, dimension (:) :: exts1,os1,gs1,exte1,oe1,ge1
       real*8,allocatable, dimension (:) :: exts2,os2,gs2,exte2,oe2,ge2
       real*8,allocatable, dimension (:) :: exts3,os3,gs3,exte3,oe3,ge3
@@ -253,6 +244,44 @@ C     ####################################################################
       print*
 
       
+c     Read the simulation period (YYYYMM-YYYYMM) from period.dat;
+c     this sets the number of months and the input file names
+      call read_period(period, nmons)
+      title = 'WACCM Surface area density of stratopheric aerosol, '//
+     +   'monthly mean value '//period(1:6)//' - '//period(8:13)
+
+c     Allocate the monthly arrays now that nmons is known
+      allocate(ps(nlats,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of ps failed'
+      allocate(p(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of p failed'
+      allocate(var(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of var failed'
+      allocate(n1(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of n1 failed'
+      allocate(n2(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of n2 failed'
+      allocate(n3(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of n3 failed'
+      allocate(so41(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of so41 failed'
+      allocate(so42(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of so42 failed'
+      allocate(so43(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of so43 failed'
+      allocate(t(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of t failed'
+      allocate(rh(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of rh failed'
+      allocate(dgnumwet1(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of dgnumwet1 failed'
+      allocate(dgnumwet2(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of dgnumwet2 failed'
+      allocate(dgnumwet3(nlats,nlevels,nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of dgnumwet3 failed'
+      allocate(time(nmons), stat=stat)
+      if (stat .ne. 0) stop 'allocation of time failed'
+
       print*, 'Reading bands wavelength boundaries from bands.dat'
       open(1,file='bands.dat')
       read(1,*) ns,ne
@@ -328,10 +357,11 @@ c     Get current date
 
          
 c     Read WACCM surface pressure data
-      filename="WACCM_data/h0zm.PS.202001-210012.nc"
+      filename='WACCM_data/h0zm.PS.'//period//'.nc'
 
 c     Caluclate full pressure field from hybrid coefficients and surface pressure
-      call read_ps(filename,p,time,lats,alts)
+      call read_ps(filename,nlats,nlevels,nmons,p,time,lats,alts,
+     +             tunits,tcal)
 
 c     This subroutine also gets WACCM time, level and latitude data  
       print*
@@ -339,7 +369,8 @@ c     This subroutine also gets WACCM time, level and latitude data
       print*
       print*, "Latitudes: ", lats(1:10), "... ", lats(nlats-9:nlats) 
       print*
-      print*, "Days after 2020", time(1:10), "... ", time(nmons-9:nmons)
+      print*, "Time [", trim(tunits), "]: "
+      print*, time(1:10), "... ", time(nmons-9:nmons)
       print*
       
       
@@ -363,7 +394,7 @@ c     Create it with the overwrite flag nf_clobber and check for errors
 
 c     Next all the attributes are written
       retval = nf_put_att_text(ncid, NF90_global,
-     + 'title',LEN(title), 
+     + 'title',len_trim(title), 
      +     title)
 
       retval = nf_put_att_text(ncid, NF90_global,
@@ -480,8 +511,14 @@ C     units.
      +     LAT_units)
       if (retval .ne. nf_noerr) call handle_err(retval)
       
-      retval = nf_put_att_text(ncid, mon_varid, units, len(mON_units), 
-     +     mON_units)
+      retval = nf_put_att_text(ncid, mon_varid, units, len_trim(tunits),
+     +     tunits)
+      if (retval .ne. nf_noerr) call handle_err(retval)
+      if (len_trim(tcal) .gt. 0) then
+         retval = nf_put_att_text(ncid, mon_varid, 'calendar',
+     +        len_trim(tcal), tcal)
+         if (retval .ne. nf_noerr) call handle_err(retval)
+      endif
       if (retval .ne. nf_noerr) call handle_err(retval)
 
       retval = nf_put_att_text(ncid, wls1_varid, units, len(wls1_units), 
@@ -605,49 +642,60 @@ C     ######################################################
 
       
 
-       filename="WACCM_data/h0zm.num_a1.202001-210012.nc"
+       filename='WACCM_data/h0zm.num_a1.'//period//'.nc'
        varname='num_a1'
-       call read_var(filename, varname, n1)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  n1)
        
-       filename="WACCM_data/h0zm.num_a2.202001-210012.nc"
+       filename='WACCM_data/h0zm.num_a2.'//period//'.nc'
        varname='num_a2'
-       call read_var(filename, varname, n2)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  n2)
        
-       filename="WACCM_data/h0zm.num_a3.202001-210012.nc"
+       filename='WACCM_data/h0zm.num_a3.'//period//'.nc'
        varname='num_a3'
-       call read_var(filename, varname, n3)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  n3)
 
-       filename="WACCM_data/so4_a1.202001-210012.nc"
+       filename='WACCM_data/so4_a1.'//period//'.nc'
        varname='so4_a1'
-       call read_var(filename, varname, so41)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  so41)
 
-       filename="WACCM_data/so4_a2.202001-210012.nc"
+       filename='WACCM_data/so4_a2.'//period//'.nc'
        varname='so4_a2'
-       call read_var(filename, varname, so42)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  so42)
 
-       filename="WACCM_data/so4_a3.202001-210012.nc"
+       filename='WACCM_data/so4_a3.'//period//'.nc'
        varname='so4_a3'
-       call read_var(filename, varname, so43)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  so43)
 
-       filename="WACCM_data/T.202001-210012.nc"
+       filename='WACCM_data/T.'//period//'.nc'
        varname='T'
-       call read_var(filename, varname, t)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  t)
 
-       filename="WACCM_data/RELHUM.202001-210012.nc"
+       filename='WACCM_data/RELHUM.'//period//'.nc'
        varname='RELHUM'
-       call read_var(filename, varname, RH) 
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  RH) 
 
-       filename="WACCM_data/h0zm.dgnumwet1.202001-210012.nc"
+       filename='WACCM_data/h0zm.dgnumwet1.'//period//'.nc'
        varname='dgnumwet1'
-       call read_var(filename, varname, dgnumwet1)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  dgnumwet1)
        
-       filename="WACCM_data/h0zm.dgnumwet2.202001-210012.nc"
+       filename='WACCM_data/h0zm.dgnumwet2.'//period//'.nc'
        varname='dgnumwet2'
-       call read_var(filename, varname, dgnumwet2)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  dgnumwet2)
        
-       filename="WACCM_data/h0zm.dgnumwet3.202001-210012.nc"
+       filename='WACCM_data/h0zm.dgnumwet3.'//period//'.nc'
        varname='dgnumwet3'
-       call read_var(filename, varname, dgnumwet3)
+       call read_var(filename, varname, nlats, nlevels, nmons,
+     +                  dgnumwet3)
 
        
       print*, "Number of months: ", nmons, ", lats: ", nlats, 
@@ -672,7 +720,7 @@ c     This loop does the actual calculations of optical properties
       print*
         
       DO I =1,nmons
-      print*,"### Month:", i, "of 972"
+      print*,"### Month:", i, "of", nmons
       print*
       DO J =1, nlats
       DO k =1, nlevels
@@ -685,7 +733,7 @@ c           Calculate H2O weight percentage
             ph2o = rhh/100* vwater(tt) ! vwater is a function btw
             call calwtwaccm(Tt, wts, ph2o)
             vol = 8.314*tt/pp* 1000/28.97 !m3/kg
-            wtt=wts
+            wtt=wts/100d0 ! H2SO4 wt% -> fraction (table axis)
              
 c           Print some values to check for numerical inconsistencies
             if (j.eq.check_lat .and. k.eq.check_level) 
