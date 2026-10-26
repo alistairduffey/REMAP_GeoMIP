@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -N remap_table
+#PBS -A wyom0228
+#PBS -q develop
+#PBS -l select=1:ncpus=1:mem=16GB
+#PBS -l walltime=04:00:00
+#PBS -j oe
+#
+# Build lookup_table.dat for the bands in bands.dat, and nothing else.
+# Needs bands.dat, data_base/, bands_ECHAM6.f and selib.f in this directory.
+#   qsub build_table.pbs
+
+cd "$PBS_O_WORKDIR"
+set -e
+for f in bands.dat data_base bands_ECHAM6.f selib.f; do
+    [ -e "$f" ] || { echo "$f not found in $PWD"; exit 1; }
+done
+if [ -e lookup_table.dat ]; then
+    echo "lookup_table.dat already exists; move or delete it first"; exit 1
+fi
+echo "Bands:"; cat bands.dat
+
+module purge
+module load ncarenv nvhpc netcdf
+ulimit -s unlimited
+FFLAGS=$(nf-config --fflags)
+FLIBS="$(nf-config --flibs) $(nc-config --libs)"
+LIBDIRS=$(echo $FLIBS | tr " " "\n" | sed -n "s/^-L//p" | sort -u | paste -sd: -)
+export LD_LIBRARY_PATH="$LIBDIRS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+BUILD=$(mktemp -d)
+(cd "$BUILD" && nvfortran $FFLAGS -o "$PBS_O_WORKDIR/bands_ECHAM6" \
+     "$PBS_O_WORKDIR/bands_ECHAM6.f" "$PBS_O_WORKDIR/selib.f" $FLIBS)
+rm -rf "$BUILD"
+
+start=$(date +%s)
+./bands_ECHAM6
+echo "lookup table built in $(( ($(date +%s) - start) / 60 )) min"
+
+n=$(wc -l < lookup_table.dat)
+echo "lookup_table.dat: $n lines (expected 29700)"
+[ "$n" -eq 29700 ] || { echo "WARNING: unexpected line count"; exit 1; }
+
