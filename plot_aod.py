@@ -2,7 +2,7 @@
 """
 Approximate 550 nm stratospheric AOD from the finalized REMAP outputs.
 
-  python plot_aod.py                         # the five default scenarios
+  python plot_aod.py                         # every scenario in final/
   python plot_aod.py --names G6-1p5K-SAI INJANN0N --trop none --png aod.png
 
 AOD = sum over levels of ext_sun[band] * dz, with
@@ -28,6 +28,7 @@ years. Scenarios have different periods, so each uses its own last decade.
 import argparse
 import glob
 import os
+import re
 import sys
 
 import numpy as np
@@ -37,8 +38,33 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 R_D, G = 287.04, 9.80616
-DEFAULT = ["G6-1p5K-SAI", "G6-1p5K-HiLLA", "G6-1p5K-SAI-end_002",
-           "INJANN0N", "INJMAM60N"]
+# Display order: feedback-controlled runs, then single-point injections N to S.
+ORDER = ["G6-1p5K-SAI", "G6-1p5K-HiLLA", "G6-1p5K-SAI-end_002",
+         "INJMAM60N", "INJANN45N", "INJANN30N", "INJANN15N", "INJANN0N",
+         "INJANN15S", "INJANN30S", "INJANN45S", "INJSON60S"]
+FIXED = {"G6-1p5K-SAI": "black", "G6-1p5K-HiLLA": "tab:green",
+         "G6-1p5K-SAI-end_002": "tab:purple"}
+
+
+def discover(final, model):
+    """All scenarios with a _sun file in final/, in display order."""
+    found = {os.path.basename(f)[len("geomip_WACCM_"):-len(f"_to_{model}_sun.nc")]
+             for f in glob.glob(os.path.join(final, f"geomip_WACCM_*_to_{model}_sun.nc"))}
+    return [n for n in ORDER if n in found] + sorted(found - set(ORDER))
+
+
+def style(name):
+    """Colour: fixed for the feedback runs; single-point runs coloured by
+    injection latitude (blue = south, red = north)."""
+    if name in FIXED:
+        return FIXED[name], 2.2
+    m = re.search(r"INJ[A-Z]{3}(\d+)([NS])", name)
+    if m:
+        lat = int(m.group(1)) * (1 if m.group(2) == "N" else -1)
+        if lat == 0:
+            return "0.4", 1.4     # the colormap's midpoint is too pale to see
+        return plt.get_cmap("coolwarm")((lat + 60) / 120), 1.4
+    return "0.5", 1.4
 
 
 def load(name, final, scen_root, band, model):
@@ -97,7 +123,8 @@ def gmean(x, lat):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("--names", nargs="+", default=DEFAULT)
+    ap.add_argument("--names", nargs="+",
+                    help="scenarios to plot (default: every scenario in final/)")
     ap.add_argument("--final-dir", default="final")
     ap.add_argument("--scen-root", default="scenarios")
     ap.add_argument("--model", default="NorESM2-LM")
@@ -113,29 +140,31 @@ def main():
                                    gridspec_kw={"width_ratios": [1.6, 1]})
     notes = set()
     print(f"{'scenario':22s} {'period':>11s} {'final-decade gm AOD':>20s}")
-    for i, name in enumerate(a.names):
+    names = a.names or discover(a.final_dir, a.model)
+    if not names:
+        sys.exit(f"no geomip_WACCM_*_to_{a.model}_sun.nc files in {a.final_dir}/")
+    for name in names:
         try:
             d = load(name, a.final_dir, a.scen_root, a.band, a.model)
         except (FileNotFoundError, ValueError) as e:
             print(f"{name:22s} skipped: {e}")
             continue
-        c = f"C{i}"
+        c, lw = style(name)
         tau = aod(d, a.trop)                                       # month, lat
         gm = gmean(tau, d["lat"])
         yrs = d["years"]
 
-        ax1.plot(yrs, gm, color=c, lw=0.6, alpha=0.4)
+        ax1.plot(yrs, gm, color=c, lw=0.5, alpha=0.25)
         nyear = len(gm) // 12
         ann = gm[:12 * nyear].reshape(nyear, 12).mean(1)
         ax1.plot(yrs[:12 * nyear].reshape(nyear, 12).mean(1), ann,
-                 color=c, lw=2, label=name)
+                 color=c, lw=lw, label=name)
 
         n = min(12 * a.years, len(gm))
         if n < 12 * a.years:
             notes.add(f"{name}: only {n} months available for the final mean")
         zm = tau[-n:].mean(0)
-        y0, y1 = int(yrs[-n]), int(yrs[-1])
-        ax2.plot(d["lat"], zm, color=c, lw=2, label=f"{name} ({y0}-{y1})")
+        ax2.plot(d["lat"], zm, color=c, lw=lw)
         if d["tsrc"] != "prepped WACCM T":
             notes.add(f"{name}: dz from {d['tsrc']}")
         print(f"{name:22s} {int(yrs[0])}-{int(yrs[-1]):>4d} "
@@ -149,13 +178,12 @@ def main():
     ax1.set(xlabel="year", ylabel="global-mean AOD",
             title=f"(a) Global-mean AOD ({band_txt}, {trop_txt})")
     ax2.set(xlabel="latitude", ylabel="AOD", xlim=(-90, 90),
-            title=f"(b) Zonal-mean AOD, final {a.years} years")
+            title=f"(b) Zonal-mean AOD, final {a.years} years of each scenario")
     ax2.set_xticks(range(-90, 91, 30))
     for ax in (ax1, ax2):
         ax.grid(alpha=0.3)
         ax.set_ylim(bottom=0)
-    ax1.legend(fontsize=8)
-    ax2.legend(fontsize=7)
+    ax1.legend(fontsize=7, ncol=2, loc="upper left", frameon=False)
     if notes:
         fig.text(0.01, 0.005, "; ".join(sorted(notes)), fontsize=7)
     fig.tight_layout(rect=(0, 0.03 if notes else 0, 1, 1))
